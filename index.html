@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte RH v2 — AMG/Chubbies: Retención y Asistencia de Candidatos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #E8401C;
+    --secondary: #2C3E50;
+    --accent: #F39C12;
+    --success: #27AE60;
+    --info: #2980B9;
+    --light-bg: #F8F9FA;
+    --card-bg: #FFFFFF;
+    --text: #2C3E50;
+    --text-light: #7F8C8D;
+    --border: #ECF0F1;
+    --warning: #F39C12;
+    --purple: #8E44AD;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #F0F2F5; color: var(--text); line-height: 1.6; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white; padding: 48px 40px 40px; position: relative; overflow: hidden;
+  }
+  .header::before {
+    content: ''; position: absolute; top: -50%; right: -10%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(232,64,28,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(232,64,28,0.2); border: 1px solid rgba(232,64,28,0.4);
+    color: #ff7f5e; padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .header h1 { font-size: 2.2rem; font-weight: 700; line-height: 1.2; margin-bottom: 12px; }
+  .header h1 span { color: #ff7f5e; }
+  .header-sub { font-size: 0.95rem; color: rgba(255,255,255,0.65); max-width: 640px; margin-bottom: 32px; }
+  .header-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  .header-meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .header-meta-item .label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; }
+  .header-meta-item .value { font-size: 15px; font-weight: 600; color: white; }
+
+  /* AVISO DE LIMITACIONES — visible y honesto */
+  .limitations-banner {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    padding: 20px 40px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .limitations-banner .icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .limitations-banner h3 { font-size: 0.9rem; font-weight: 700; color: #92400e; margin-bottom: 6px; }
+  .limitations-banner ul { font-size: 0.8rem; color: #78350f; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+
+  /* FUENTES */
+  .sources-bar {
+    background: #1e293b; color: white;
+    padding: 14px 40px;
+    display: flex; gap: 32px; align-items: center; flex-wrap: wrap;
+    font-size: 0.78rem;
+  }
+  .sources-bar .src-label { color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; font-size: 0.72rem; }
+  .source-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .source-chip.survey { background: rgba(41,128,185,0.25); color: #7dd3fc; border: 1px solid rgba(41,128,185,0.3); }
+  .source-chip.ops { background: rgba(39,174,96,0.2); color: #86efac; border: 1px solid rgba(39,174,96,0.3); }
+
+  /* MAIN */
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; margin-top: 40px; }
+  .section-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .section-icon.red { background: rgba(232,64,28,0.1); }
+  .section-icon.blue { background: rgba(41,128,185,0.1); }
+  .section-icon.green { background: rgba(39,174,96,0.1); }
+  .section-icon.yellow { background: rgba(243,156,18,0.1); }
+  .section-icon.purple { background: rgba(142,68,173,0.1); }
+  .section-icon.orange { background: rgba(230,126,34,0.1); }
+  .section-header h2 { font-size: 1.2rem; font-weight: 700; color: var(--secondary); }
+  .section-header p { font-size: 0.82rem; color: var(--text-light); margin-top: 2px; }
+
+  .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  /* KPI */
+  .kpi-card { background: var(--card-bg); border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .kpi-card.red::after { background: var(--primary); }
+  .kpi-card.yellow::after { background: var(--warning); }
+  .kpi-card.green::after { background: var(--success); }
+  .kpi-card.blue::after { background: var(--info); }
+  .kpi-card.gray::after { background: #95a5a6; }
+  .kpi-card .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-light); font-weight: 600; margin-bottom: 8px; }
+  .kpi-card .kpi-value { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .kpi-card.red .kpi-value { color: var(--primary); }
+  .kpi-card.yellow .kpi-value { color: var(--warning); }
+  .kpi-card.green .kpi-value { color: var(--success); }
+  .kpi-card.blue .kpi-value { color: var(--info); }
+  .kpi-card.gray .kpi-value { color: #7f8c8d; }
+  .kpi-card .kpi-desc { font-size: 0.78rem; color: var(--text-light); line-height: 1.4; }
+  .kpi-card .kpi-source { font-size: 0.7rem; margin-top: 8px; padding: 2px 8px; border-radius: 10px; display: inline-block; font-weight: 600; }
+  .kpi-card .kpi-source.survey { background: rgba(41,128,185,0.1); color: var(--info); }
+  .kpi-card .kpi-source.ops { background: rgba(39,174,96,0.1); color: var(--success); }
+  .kpi-card .kpi-source.est { background: rgba(243,156,18,0.1); color: #d68910; }
+
+  /* FUNNEL */
+  .funnel-visual { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 16px 0; }
+  .funnel-stage { display: flex; align-items: center; gap: 16px; width: 100%; max-width: 540px; padding: 13px 18px; border-radius: 8px; margin-bottom: 2px; }
+  .funnel-stage .fs-num { font-size: 1.3rem; font-weight: 800; width: 56px; flex-shrink: 0; }
+  .funnel-stage .fs-body { flex: 1; }
+  .funnel-stage .fs-label { font-size: 0.85rem; font-weight: 600; }
+  .funnel-stage .fs-sub { font-size: 0.72rem; color: rgba(0,0,0,0.4); margin-top: 1px; }
+  .funnel-stage .fs-badge { font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+  .funnel-stage.s1 { background: rgba(44,62,80,0.06); width: 100%; }
+  .funnel-stage.s1 .fs-num { color: #2c3e50; }
+  .funnel-stage.s1 .fs-badge { background: rgba(44,62,80,0.1); color: #2c3e50; }
+  .funnel-stage.s2 { background: rgba(243,156,18,0.08); width: 88%; }
+  .funnel-stage.s2 .fs-num { color: var(--warning); }
+  .funnel-stage.s2 .fs-badge { background: rgba(243,156,18,0.15); color: #d68910; }
+  .funnel-stage.s3 { background: rgba(232,64,28,0.07); width: 70%; }
+  .funnel-stage.s3 .fs-num { color: var(--primary); }
+  .funnel-stage.s3 .fs-badge { background: rgba(232,64,28,0.12); color: var(--primary); }
+  .funnel-stage.s4 { background: rgba(232,64,28,0.12); width: 52%; }
+  .funnel-stage.s4 .fs-num { color: #c0392b; }
+  .funnel-stage.s4 .fs-badge { background: rgba(192,57,43,0.15); color: #c0392b; }
+  .funnel-connector { width: 2px; height: 10px; background: var(--border); margin: 0 auto; }
+
+  /* CHARTS */
+  .chart-container { position: relative; height: 280px; width: 100%; }
+  .chart-container-tall { position: relative; height: 340px; width: 100%; }
+
+  /* HBAR */
+  .hbar-list { display: flex; flex-direction: column; gap: 13px; }
+  .hbar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .hbar-label { font-size: 0.82rem; color: var(--text); font-weight: 500; }
+  .hbar-value { font-size: 0.82rem; font-weight: 700; }
+  .hbar-track { height: 10px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 999px; }
+
+  /* CALLOUT */
+  .callout {
+    border-radius: 10px; padding: 14px 16px; margin-top: 14px;
+  }
+  .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .callout.red { background: #fef2f2; border: 1px solid #fecaca; }
+  .callout.yellow { background: #fffbeb; border: 1px solid #fde68a; }
+  .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .callout.gray { background: #f8fafc; border: 1px solid #e2e8f0; }
+  .callout h4 { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+  .callout.blue h4 { color: #1d4ed8; }
+  .callout.red h4 { color: var(--primary); }
+  .callout.yellow h4 { color: #92400e; }
+  .callout.green h4 { color: #166534; }
+  .callout.gray h4 { color: #475569; }
+  .callout p, .callout li { font-size: 0.78rem; color: #374151; line-height: 1.5; }
+  .callout ul { padding-left: 14px; display: flex; flex-direction: column; gap: 3px; }
+
+  /* TEMA BUBBLES */
+  .theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .theme-bubble { background: var(--card-bg); border-radius: 12px; padding: 16px; text-align: center; border: 1px solid var(--border); }
+  .theme-bubble .pct { font-size: 1.5rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .theme-bubble .theme-name { font-size: 0.73rem; color: var(--text-light); line-height: 1.35; }
+  .theme-bubble .theme-note { font-size: 0.65rem; color: #aaa; margin-top: 4px; font-style: italic; }
+
+  /* INSIGHT CARDS */
+  .insight-card { background: var(--card-bg); border-radius: 12px; padding: 16px; border: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
+  .insight-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .insight-icon.red { background: rgba(232,64,28,0.1); }
+  .insight-icon.orange { background: rgba(243,156,18,0.1); }
+  .insight-icon.blue { background: rgba(41,128,185,0.1); }
+  .insight-icon.green { background: rgba(39,174,96,0.1); }
+  .insight-icon.gray { background: #f1f5f9; }
+  .insight-content h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+  .insight-content p { font-size: 0.78rem; color: var(--text-light); line-height: 1.5; }
+
+  /* QUOTE */
+  .quote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .quote-box { background: #F8F9FA; border-left: 3px solid var(--primary); padding: 12px 14px; border-radius: 0 8px 8px 0; font-size: 0.79rem; color: var(--text); font-style: italic; line-height: 1.5; }
+
+  /* ACTION PLAN */
+  .action-plan { background: var(--card-bg); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+  .action-header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 20px 24px; display: flex; align-items: center; gap: 12px; }
+  .action-header h3 { font-size: 1rem; font-weight: 700; }
+  .action-header p { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .action-body { padding: 24px; }
+  .action-item { display: flex; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .action-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .action-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+  .action-num.p1 { background: #fdecea; color: var(--primary); }
+  .action-num.p2 { background: #fef3cd; color: #d68910; }
+  .action-num.p3 { background: #d5f5e3; color: var(--success); }
+  .action-content { flex: 1; }
+  .action-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+  .action-desc { font-size: 0.81rem; color: var(--text-light); margin-bottom: 10px; line-height: 1.5; }
+  .action-steps { display: flex; flex-direction: column; gap: 6px; }
+  .action-step { display: flex; gap: 8px; align-items: flex-start; font-size: 0.79rem; line-height: 1.5; }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+  .step-dot.p1 { background: var(--primary); }
+  .step-dot.p2 { background: var(--warning); }
+  .step-dot.p3 { background: var(--success); }
+  .action-meta { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .action-tag { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; }
+  .action-tag.urgente { background: #fdecea; color: var(--primary); }
+  .action-tag.medio { background: #fef3cd; color: #d68910; }
+  .action-tag.largo { background: #d5f5e3; color: var(--success); }
+  .action-tag.info { background: #e8eaf6; color: #3f51b5; }
+
+  /* PRIORITY BLOCK */
+  .priority-block { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .priority-block.p1 { color: var(--primary); }
+  .priority-block.p2 { color: #d68910; }
+  .priority-block.p3 { color: var(--success); }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.81rem; }
+  thead tr { background: #F8F9FA; border-bottom: 2px solid var(--border); }
+  th { padding: 11px 13px; text-align: left; font-weight: 700; color: var(--text-light); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; }
+  td { padding: 11px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) { background: #FAFAFA; }
+
+  .tag { padding: 2px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+  .tag.encuesta { background: rgba(41,128,185,0.1); color: var(--info); }
+  .tag.ops { background: rgba(39,174,96,0.1); color: var(--success); }
+  .tag.estimado { background: rgba(243,156,18,0.1); color: #d68910; }
+  .tag.rojo { background: #fdecea; color: var(--primary); }
+  .tag.amarillo { background: #fef3cd; color: #d68910; }
+  .tag.verde { background: #d5f5e3; color: var(--success); }
+
+  /* HIGHLIGHT */
+  .highlight-box { background: linear-gradient(135deg, rgba(232,64,28,0.05), rgba(243,156,18,0.05)); border: 1px solid rgba(232,64,28,0.15); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+  .highlight-box .big-num { font-size: 2.2rem; font-weight: 800; color: var(--primary); line-height: 1; flex-shrink: 0; }
+  .highlight-box .hl-text { font-size: 0.83rem; color: var(--text); line-height: 1.5; }
+
+  .footer { background: var(--secondary); color: rgba(255,255,255,0.5); text-align: center; padding: 20px; font-size: 0.75rem; margin-top: 48px; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .quote-grid { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.5rem; }
+    .funnel-stage { max-width: 100%; }
+    .funnel-stage.s2, .funnel-stage.s3, .funnel-stage.s4 { width: 100%; }
+    .sources-bar { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-badge">📊 Reporte RH · AMG / Chubbies · Versión 2 · Abril 2026</div>
+  <h1>Retención Temprana y Asistencia<br>de <span>Candidatos Operativos</span></h1>
+  <p class="header-sub">Análisis de encuesta a 81 personas — la mayoría empleados contratados con menos de 1 mes en AMG — sobre qué buscan en un trabajo y qué los desmotiva. Complementado con datos operativos reales de RH.</p>
+  <div class="header-meta">
+    <div class="header-meta-item"><span class="label">Encuestados</span><span class="value">81 personas</span></div>
+    <div class="header-meta-item"><span class="label">Perfil mayoritario</span><span class="value">Empleados &lt;1 mes</span></div>
+    <div class="header-meta-item"><span class="label">Empresa</span><span class="value">AMG / Chubbies</span></div>
+    <div class="header-meta-item"><span class="label">Fecha</span><span class="value">Abril 2026</span></div>
+  </div>
+</div>
+
+<!-- LIMITACIONES — visible y honesto -->
+<div class="limitations-banner">
+  <div class="icon">⚠️</div>
+  <div>
+    <h3>Limitaciones del análisis — leer antes de tomar decisiones</h3>
+    <ul>
+      <li><strong>Perfil de muestra:</strong> La mayoría de los 81 encuestados ya fueron contratados y llevan menos de 1 mes. No representan a quienes fantasmearon la entrevista — ese grupo no está en la muestra.</li>
+      <li><strong>Q2 y Q3 son respuestas hipotéticas:</strong> Las preguntas sobre "por qué no fuiste a la entrevista" y "por qué no fuiste el primer día" fueron respondidas por personas que sí fueron. El enunciado indicaba "elige la que más se acercaría a tu situación." Son señales, no datos de comportamiento real.</li>
+      <li><strong>Q4 tiene traslapes:</strong> Una misma persona puede mencionar varios temas. Los porcentajes no suman 100% ni son mutuamente excluyentes.</li>
+      <li><strong>Datos operativos vs. encuesta:</strong> La tasa de asistencia (55%) proviene de registros de RH. Las demás cifras del embudo son estimaciones internas — se señalan claramente en cada caso.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- FUENTES -->
+<div class="sources-bar">
+  <span class="src-label">Fuentes:</span>
+  <span class="source-chip survey">🔵 Encuesta — 81 respuestas</span>
+  <span class="source-chip ops">🟢 Dato operativo — Registros RH AMG</span>
+  <span style="color:rgba(255,255,255,0.4); font-size:0.72rem;">⚠️ Estimación interna — sin validación externa</span>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- SECCIÓN 1: EL EMBUDO REAL -->
+  <div class="section-header" style="margin-top:0;">
+    <div class="section-icon red">🔻</div>
+    <div><h2>El Embudo Real de Contratación</h2><p>Dónde se concentran las pérdidas — con datos separados por fuente</p></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">ETAPAS DEL PROCESO · FUENTE INDICADA POR ETAPA</p>
+      <div class="funnel-visual">
+        <div class="funnel-stage s1">
+          <div class="fs-num">100</div>
+          <div class="fs-body">
+            <div class="fs-label">Candidatos citados a entrevista</div>
+            <div class="fs-sub">Punto de partida</div>
+          </div>
+          <div class="fs-badge">Base</div>
+        </div>
+        <div class="funnel-connector"></div>
+        <div class="funnel-stage s2">
+          <div class="fs-num">55</div>
+          <div class="fs-body">
+            <div class="fs-label">Asisten a la entrevista</div>
+            <div class="fs-sub">🟢 Dato real de RH</div>
+          </div>
+          <div class="fs-badge">-45%</div>
+        </div>
+        <div class="funnel-connector"></div>
+        <div class="funnel-stage s3">
+          <div class="fs-num">~20–30</div>
+          <div class="fs-body">
+            <div class="fs-label">Aceptan y firman contrato</div>
+            <div class="fs-sub">⚠️ Estimación interna — sin dato exacto</div>
+          </div>
+          <div class="fs-badge">Desconocido</div>
+        </div>
+        <div class="funnel-connector"></div>
+        <div class="funnel-stage s4">
+          <div class="fs-num">~16–24</div>
+          <div class="fs-body">
+            <div class="fs-label">Permanecen más de 1 mes</div>
+            <div class="fs-sub">⚠️ Estimación — 20% abandona &lt;1 mes</div>
+          </div>
+          <div class="fs-badge">Crisis</div>
+        </div>
+      </div>
+      <div class="callout yellow" style="margin-top:16px;">
+        <h4>⚠️ Dato urgente que falta medir</h4>
+        <p>No existe un dato confirmado de cuántos aceptados llegan efectivamente a firmar y presentarse. Sin ese número, no se puede saber dónde está el mayor cuello de botella post-entrevista. <strong>Recomendación: instrumentar este dato esta semana.</strong></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">DIAGNÓSTICO REAL VS. PERCEPCIÓN INICIAL</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 16px;">
+          <p style="font-size:0.8rem; font-weight:700; color:#166534; margin-bottom:6px;">✅ Asistencia a entrevistas: mejor de lo creído</p>
+          <p style="font-size:0.78rem; color:#374151; line-height:1.5;">La percepción inicial era "1-2 de cada 10 llegan." El dato real de RH es <strong>55%</strong>. Esto no es un problema grave — es el promedio esperado para roles operativos en México. El problema no está aquí.</p>
+        </div>
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px 16px;">
+          <p style="font-size:0.8rem; font-weight:700; color:#991b1b; margin-bottom:6px;">🔴 La crisis real: lo que pasa después de contratar</p>
+          <p style="font-size:0.78rem; color:#374151; line-height:1.5;">El abandono antes del primer mes (~20%) y probablemente antes de firmar es donde se concentra la pérdida real. La encuesta apunta directamente a las causas: <strong>mal ambiente, mal trato de jefes, falta de onboarding y pagos impuntuales</strong>.</p>
+        </div>
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 16px;">
+          <p style="font-size:0.8rem; font-weight:700; color:#92400e; margin-bottom:6px;">⚠️ Implicación estratégica</p>
+          <p style="font-size:0.78rem; color:#374151; line-height:1.5;">Invertir recursos en aumentar asistencia a entrevistas cuando la tasa ya es 55% genera retornos mínimos. El ROI está en mejorar la <strong>experiencia de los primeros 30 días</strong> para quienes ya son contratados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div style="margin-top:20px;" class="grid-4">
+    <div class="kpi-card green">
+      <div class="kpi-label">Asistencia a entrevistas</div>
+      <div class="kpi-value">55%</div>
+      <div class="kpi-desc">Normal para roles operativos en México. No es la prioridad.</div>
+      <span class="kpi-source ops">🟢 Dato real de RH</span>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">Conversión oferta → firma</div>
+      <div class="kpi-value">?%</div>
+      <div class="kpi-desc">Sin dato medido. Urge instrumentar este indicador.</div>
+      <span class="kpi-source est">⚠️ Sin dato confirmado</span>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Abandono primer mes</div>
+      <div class="kpi-value">~20%</div>
+      <div class="kpi-desc">2 de cada 10 contratados se van antes de 30 días.</div>
+      <span class="kpi-source est">⚠️ Estimación interna</span>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Muestra encuestada</div>
+      <div class="kpi-value">81</div>
+      <div class="kpi-desc">Mayormente empleados activos con menos de 1 mes.</div>
+      <span class="kpi-source survey">🔵 Encuesta</span>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 2: Q1 — QUÉ BUSCAN -->
+  <div class="section-header">
+    <div class="section-icon blue">🎯</div>
+    <div><h2>¿Qué buscan en un trabajo?</h2>
+    <p>Pregunta 1 · Selección múltiple hasta 3 opciones · 81 respuestas · <span class="tag encuesta">🔵 Encuesta</span></p></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">PRIORIDADES — % DE ENCUESTADOS QUE LO ELIGIERON</p>
+      <div class="hbar-list">
+        <div>
+          <div class="hbar-header"><span class="hbar-label">💰 Buen salario / sueldo competitivo</span><span class="hbar-value" style="color:var(--primary)">77.8%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:77.8%; background:#E8401C;"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">📈 Posibilidad de crecer o aprender</span><span class="hbar-value" style="color:#E8551C">69.1%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:69.1%; background:#E8551C;"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">🤝 Buen ambiente con compañeros y jefes</span><span class="hbar-value" style="color:#E8731C">60.5%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:60.5%; background:#E8731C;"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">🕐 Horarios flexibles o predecibles</span><span class="hbar-value" style="color:var(--warning)">50.6%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:50.6%; background:var(--warning);"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">📍 Cerca de casa</span><span class="hbar-value" style="color:#F5B041">32.1%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:32.1%; background:#F5B041;"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">🙏 Respeto desde el proceso de contratación</span><span class="hbar-value" style="color:var(--info)">27.2%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:27.2%; background:var(--info);"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">🔒 Estabilidad laboral</span><span class="hbar-value" style="color:var(--success)">9.9%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:9.9%; background:var(--success);"></div></div>
+        </div>
+        <div>
+          <div class="hbar-header"><span class="hbar-label">🛡️ Que no los corran fácilmente</span><span class="hbar-value" style="color:var(--purple)">9.9%</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:9.9%; background:var(--purple);"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">DISTRIBUCIÓN VISUAL</p>
+      <div class="chart-container"><canvas id="chartQ1"></canvas></div>
+      <div class="callout blue" style="margin-top:16px;">
+        <h4>🔍 Lectura correcta de este dato</h4>
+        <p>Estos encuestados <strong>ya aceptaron trabajar en AMG</strong>. Sus respuestas revelan qué esperaban al entrar. Que el 69% priorizó "crecimiento y aprendizaje" y el 60% "buen ambiente" — y que la encuesta Q4 muestra que exactamente eso es lo que no están encontrando — es la brecha más importante del reporte.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 3: Q2 — ENTREVISTA (HIPOTÉTICO) -->
+  <div class="section-header">
+    <div class="section-icon yellow">📵</div>
+    <div>
+      <h2>¿Por qué no asistirían a una entrevista?</h2>
+      <p>Pregunta 2 · Respuesta hipotética — encuestados que SÍ asistieron · <span class="tag encuesta">🔵 Encuesta</span> · <strong style="color:#92400e;">Leer con precaución</strong></p>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="callout yellow" style="margin-bottom:16px;">
+        <h4>⚠️ Este dato es hipotético — no comportamental</h4>
+        <p>Estas personas sí asistieron a su entrevista. La pregunta les pedía imaginar por qué no irían. Las respuestas revelan <em>percepciones y miedos</em>, no causas reales de ausentismo. Usar este dato para tomar decisiones operativas sería un error. Sirve como señal complementaria.</p>
+      </div>
+      <div class="chart-container"><canvas id="chartQ2"></canvas></div>
+    </div>
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:14px; font-weight:600;">QUÉ SÍ PODEMOS INFERIR DE ESTO</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="insight-card">
+          <div class="insight-icon orange">🏆</div>
+          <div class="insight-content">
+            <h4>42% señala "otra oferta simultánea" como riesgo</h4>
+            <p>Aunque es hipotético, confirma que los candidatos operativos buscan trabajo en paralelo. La velocidad de contacto y citación sí importa, incluso con 55% de asistencia. Hay margen de mejora.</p>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon blue">📍</div>
+          <div class="insight-content">
+            <h4>26% menciona distancia o transporte</h4>
+            <p>Como percepción de riesgo real. Vale la pena preguntar a candidatos que sí cancelaron (si se tiene el registro) si la distancia fue el motivo. La señal es suficientemente fuerte para actuar en prevención.</p>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon gray">⏱️</div>
+          <div class="insight-content">
+            <h4>9% menciona proceso tardado o complicado</h4>
+            <p>Señal débil pero consistente con lo que se sabe del mercado operativo: cada fricción adicional en el proceso filtra candidatos. Vale revisar cuántos pasos hay entre primer contacto y entrevista.</p>
+          </div>
+        </div>
+      </div>
+      <div class="callout gray" style="margin-top:12px;">
+        <h4>📌 Para tener el dato real</h4>
+        <p>Diseñar un mensaje breve de seguimiento a candidatos que <strong>sí cancelaron o no se presentaron</strong>. Con 20 respuestas ya se tendría un diagnóstico real de ausentismo, no hipotético.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 4: Q3 — PRIMER DÍA (HIPOTÉTICO) -->
+  <div class="section-header">
+    <div class="section-icon orange">🚪</div>
+    <div>
+      <h2>¿Por qué no se presentarían el primer día?</h2>
+      <p>Pregunta 3 · Respuesta hipotética — encuestados que SÍ se presentaron · <span class="tag encuesta">🔵 Encuesta</span> · <strong style="color:#92400e;">Leer con precaución</strong></p>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="callout yellow" style="margin-bottom:16px;">
+        <h4>⚠️ Mismo problema que Q2 — respuesta especulativa</h4>
+        <p>Estas personas sí se presentaron el primer día. El 40.7% de "algo personal/familiar" es probablemente la respuesta más cómoda para alguien que no ha vivido esa situación. No se puede usar como dato de causa real.</p>
+      </div>
+      <div class="chart-container-tall"><canvas id="chartQ3"></canvas></div>
+    </div>
+    <div class="card">
+      <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:14px; font-weight:600;">LO QUE SÍ ES ACCIONABLE DE AQUÍ</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="insight-card">
+          <div class="insight-icon red">💼</div>
+          <div class="insight-content">
+            <h4>26% — "Me ofrecieron algo mejor"</h4>
+            <p>Aunque hipotético, refuerza que los candidatos siguen buscando trabajo después de aceptar. La ventana entre aceptar y presentarse es un momento de fuga activa. Comunicación proactiva en ese período tiene sentido.</p>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon orange">📋</div>
+          <div class="insight-content">
+            <h4>14% — "Las condiciones no eran lo que esperaba"</h4>
+            <p>Esta sí es una señal real, especialmente viniendo de personas que ya están adentro. Sugiere que la oferta de trabajo no comunica con claridad las condiciones del día a día. Esto se puede corregir sin costo.</p>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon blue">🎭</div>
+          <div class="insight-content">
+            <h4>10% — "Era solo una opción mientras tanto"</h4>
+            <p>Incluso entre quienes llegaron, un 10% admite que AMG era plan B. Esto sugiere oportunidad de mejorar cómo se comunica la propuesta de valor del rol durante la entrevista para crear mayor compromiso.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 5: Q4 — QUÉ DESMOTIVA (DATO SÓLIDO) -->
+  <div class="section-header">
+    <div class="section-icon purple">⚡</div>
+    <div>
+      <h2>¿Qué desmotiva en el trabajo? — El dato más confiable</h2>
+      <p>Pregunta 4 · Respuesta abierta · Experiencia vivida real de empleados activos · <span class="tag encuesta">🔵 Encuesta</span> · Alta confiabilidad</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="callout green" style="margin-bottom:20px;">
+      <h4>✅ Este es el dato más robusto de toda la encuesta</h4>
+      <p>A diferencia de Q2 y Q3, aquí los encuestados hablan de su experiencia actual en AMG. Son empleados activos con menos de 1 mes. Sus respuestas explican directamente por qué la gente se va antes de los 30 días.</p>
+    </div>
+
+    <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">TEMAS MENCIONADOS — ANÁLISIS DE TEXTO LIBRE (los porcentajes se traslapan: una persona puede mencionar múltiples temas)</p>
+
+    <div class="theme-grid">
+      <div class="theme-bubble">
+        <div class="pct" style="color:var(--primary)">43%</div>
+        <div class="theme-name">🌡️ Mal ambiente laboral / tóxico</div>
+        <div class="theme-note">35 de 81 menciones</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:var(--warning)">24%</div>
+        <div class="theme-name">💸 Salario bajo / pagos impuntuales</div>
+        <div class="theme-note">19 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:#e74c3c">19%</div>
+        <div class="theme-name">👎 Mal trato de jefes / superiores</div>
+        <div class="theme-note">15 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:#e67e22">12%</div>
+        <div class="theme-name">⏰ Horarios extendidos</div>
+        <div class="theme-note">10 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:var(--info)">10%</div>
+        <div class="theme-name">📚 Falta de capacitación</div>
+        <div class="theme-note">8 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:var(--success)">10%</div>
+        <div class="theme-name">📈 Sin crecimiento visible</div>
+        <div class="theme-note">8 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:#16a085">9%</div>
+        <div class="theme-name">🗣️ Falta de comunicación</div>
+        <div class="theme-note">7 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:var(--purple)">7%</div>
+        <div class="theme-name">🏆 Falta de reconocimiento</div>
+        <div class="theme-note">6 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:#2c3e50">6%</div>
+        <div class="theme-name">💔 Incumplimiento de lo prometido</div>
+        <div class="theme-note">5 de 81</div>
+      </div>
+      <div class="theme-bubble">
+        <div class="pct" style="color:#7f8c8d">4%</div>
+        <div class="theme-name">⚖️ Favoritismo</div>
+        <div class="theme-note">3 de 81</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div class="chart-container"><canvas id="chartQ4"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BRECHA CRÍTICA -->
+  <div class="card" style="margin-bottom:20px;">
+    <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; font-weight:600;">LA BRECHA CENTRAL: LO QUE ESPERABAN VS. LO QUE ESTÁN VIVIENDO</p>
+    <div class="grid-3">
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 16px;">
+        <p style="font-size:0.75rem; font-weight:700; color:#166534; text-transform:uppercase; margin-bottom:8px;">Esperaban al entrar (Q1)</p>
+        <p style="font-size:0.82rem; color:#374151;">69% buscaba <strong>crecer y aprender</strong></p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:4px;">60% buscaba <strong>buen ambiente</strong></p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:4px;">27% esperaba <strong>ser tratado con respeto desde el inicio</strong></p>
+      </div>
+      <div style="background:#f9a8d4; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px 16px;">
+        <p style="font-size:0.75rem; font-weight:700; color:#991b1b; text-transform:uppercase; margin-bottom:8px;">Lo que están viviendo (Q4)</p>
+        <p style="font-size:0.82rem; color:#374151;">43% reporta <strong>mal ambiente laboral</strong></p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:4px;">19% reporta <strong>mal trato de jefes</strong></p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:4px;">10% reporta <strong>falta de capacitación</strong></p>
+      </div>
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 16px;">
+        <p style="font-size:0.75rem; font-weight:700; color:#92400e; text-transform:uppercase; margin-bottom:8px;">La consecuencia</p>
+        <p style="font-size:0.82rem; color:#374151;">El candidato llega <strong>motivado y con expectativas</strong> específicas.</p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:6px;">La realidad del primer mes <strong>contradice esas expectativas</strong>.</p>
+        <p style="font-size:0.82rem; color:#374151; margin-top:6px;">El resultado es abandono en semanas, no meses.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VOCES REALES -->
+  <div class="card" style="margin-bottom:32px;">
+    <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:14px; font-weight:600;">💬 VOCES REALES — EMPLEADOS CON MENOS DE 1 MES EN AMG</p>
+    <div class="quote-grid">
+      <div class="quote-box">"Exijan protocolos cuando no hubo capacitación de por medio... solo llegas, te dicen qué hacer y lo haces lo mejor posible, aún que después haya llamadas de atención."</div>
+      <div class="quote-box">"Que te hagan menos en frente de otros compañeros e incluso en frente de los repartidores. Es muy triste ir a trabajar feliz y regresar agotado mentalmente."</div>
+      <div class="quote-box">"La deshonestidad de mis jefes, que no se cumpla conforme a lo que se ofertó en la vacante, pagos incompletos, falta de logística en manejo de personal."</div>
+      <div class="quote-box">"La falta de claridad en procesos, capacitación limitada, presión constante sin una estructura definida y la ausencia de lineamientos claros."</div>
+      <div class="quote-box">"Que el respeto de hora de comida y que paguen cuando debe ser. Por eso me salí de mi trabajo anterior antes de entrar acá."</div>
+      <div class="quote-box">"Me desmotiva no poder dar lo mejor de mí por falta de organización o comunicación, pero procuro mantenerme enfocada en aprender."</div>
+    </div>
+  </div>
+
+  <!-- PLAN DE ACCIÓN -->
+  <div class="section-header">
+    <div class="section-icon green">🚀</div>
+    <div><h2>Plan de Acción para RH — AMG/Chubbies</h2><p>Priorizado por impacto real sobre el embudo · Basado en datos de encuesta y operativos</p></div>
+  </div>
+
+  <div class="action-plan">
+    <div class="action-header">
+      <div style="font-size:1.4rem;">🗺️</div>
+      <div>
+        <h3>Hoja de ruta — 3 prioridades, 9 acciones</h3>
+        <p>El problema principal no es que no lleguen a entrevista (55% llega). El problema es lo que pasa después de contratar.</p>
+      </div>
+    </div>
+    <div class="action-body">
+
+      <div class="priority-block p1">🔴 PRIORIDAD 1 — Primeros 30 días: atacar la causa raíz de abandono temprano</div>
+
+      <div class="action-item">
+        <div class="action-num p1">1</div>
+        <div class="action-content">
+          <div class="action-title">Implementar onboarding estructurado de 2 semanas</div>
+          <div class="action-desc">El 43% de los encuestados menciona mal ambiente y el 10% señala falta de capacitación como causas de desmotivación. Un empleado que llega sin guía, sin saber qué hacer y expuesto a un equipo que no lo recibe, se va en semanas. Esta es la intervención de mayor impacto disponible.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p1"></div><span><strong>Día 1:</strong> Asignar un "buddy" — un compañero experimentado que guíe al nuevo en sus primeros 3 días. No el gerente: un par.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span><strong>Semana 1:</strong> Período de aprendizaje sin exigencia de rendimiento completo. Contexto, no presión.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span><strong>Día 7:</strong> Check-in rápido (10 min) del gerente: "¿Cómo vas? ¿Tienes dudas? ¿Hay algo que no te quede claro?"</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span><strong>Día 30:</strong> Evaluación formal bidireccional — el empleado también evalúa a AMG.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag urgente">Atiende el 43% + 10% de causas reportadas</span>
+            <span class="action-tag info">Fuente: Q4 encuesta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-item">
+        <div class="action-num p1">2</div>
+        <div class="action-content">
+          <div class="action-title">Política explícita de trato digno en sucursales — y consecuencias reales</div>
+          <div class="action-desc">El 19% menciona explícitamente mal trato de jefes o superiores. Múltiples citas hablan de humillaciones públicas frente a compañeros y repartidores. El gerente de sucursal es el factor de retención más importante — y el más descuidado actualmente.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p1"></div><span>Política escrita y firmada: cualquier corrección o feedback se da en privado, nunca frente a clientes, compañeros o terceros.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span>Incluir en evaluación de desempeño de gerentes una métrica de retención de su equipo en los primeros 90 días. Si el equipo se va, el gerente responde.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span>Capacitación mensual de 1 hora a gerentes en comunicación con personal nuevo. No opcional.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag urgente">Atiende el 19% de mal trato reportado</span>
+            <span class="action-tag info">Fuente: Q4 encuesta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-item">
+        <div class="action-num p1">3</div>
+        <div class="action-content">
+          <div class="action-title">Puntualidad y transparencia de pagos — sin excepciones</div>
+          <div class="action-desc">El 24% menciona pagos impuntuales o incompletos como causa de desmotivación. Para un empleado operativo que depende de su quincena, un pago tardío o con descuentos no explicados es una traición que rompe la confianza inmediatamente.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p1"></div><span>Si existe cualquier variación en el pago (por cualquier causa), comunicar al empleado CON ANTICIPACIÓN, no después de que lo note.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span>Enviar resumen de nómina antes del depósito: "Tu pago de $X estará disponible el [fecha]." Cero sorpresas.</span></div>
+            <div class="action-step"><div class="step-dot p1"></div><span>Explicar todos los descuentos posibles desde el primer día. Que nada aparezca en la quincena sin haber sido anunciado.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag urgente">Atiende el 24% de insatisfacción con pagos</span>
+            <span class="action-tag info">Fuente: Q4 encuesta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="priority-block p2" style="margin-top:20px;">🟡 PRIORIDAD 2 — Cerrar brechas de expectativa: lo que se promete vs. lo que se vive</div>
+
+      <div class="action-item">
+        <div class="action-num p2">4</div>
+        <div class="action-content">
+          <div class="action-title">Reformular las ofertas de trabajo con transparencia total</div>
+          <div class="action-desc">El 14% de Q3 y múltiples respuestas de Q4 indican que las condiciones reales del trabajo no coinciden con lo que se comunicó. Esto genera frustración desde el primer día y erosiona la confianza. La solución es ser más honesto en la oferta, aunque eso filtre candidatos — mejor perderlos antes que después.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p2"></div><span>Incluir en la oferta de trabajo: salario exacto o rango real, horario típico semanal (incluyendo si hay turnos o extensiones frecuentes), tipo de actividades día a día, zona de trabajo exacta.</span></div>
+            <div class="action-step"><div class="step-dot p2"></div><span>En la entrevista, describir "un día típico" con honestidad — incluyendo lo difícil. Un candidato que llega sabiendo qué lo espera tiene más probabilidad de quedarse.</span></div>
+            <div class="action-step"><div class="step-dot p2"></div><span>Eliminar frases genéricas como "excelente ambiente de trabajo." Reemplazar con información concreta y verificable.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag medio">Reduce la brecha expectativa-realidad</span>
+            <span class="action-tag info">Fuente: Q3 + Q4 encuesta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-item">
+        <div class="action-num p2">5</div>
+        <div class="action-content">
+          <div class="action-title">Mostrar el plan de crecimiento desde la entrevista</div>
+          <div class="action-desc">El 69% de los encuestados pone "posibilidad de crecer" como su segunda prioridad al buscar trabajo. Si AMG tiene rutas de ascenso (auxiliar → operador → encargado → gerente), ese dato vale más que cualquier anuncio de reclutamiento. No asumas que el candidato lo sabe — díselo explícitamente.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p2"></div><span>Crear una "tarjeta de carrera" de 1 página por rol: qué puesto es, cuál es el siguiente, qué se requiere para avanzar y en cuánto tiempo promedio lo logran quienes se quedan.</span></div>
+            <div class="action-step"><div class="step-dot p2"></div><span>Mostrar casos reales de personas que crecieron dentro de AMG durante la entrevista. Nombres, puestos, tiempo. Concreto, no abstracto.</span></div>
+            <div class="action-step"><div class="step-dot p2"></div><span>En el onboarding (día 30), establecer una meta conjunta del empleado para los próximos 3 meses ligada a su siguiente paso de carrera.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag medio">Activa la motivación del 69%</span>
+            <span class="action-tag info">Fuente: Q1 encuesta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="priority-block p3" style="margin-top:20px;">🟢 PRIORIDAD 3 — Mejorar proceso de atracción y datos operativos</div>
+
+      <div class="action-item">
+        <div class="action-num p3">6</div>
+        <div class="action-content">
+          <div class="action-title">Instrumentar el embudo completo — medir lo que hoy no se mide</div>
+          <div class="action-desc">Actualmente AMG tiene el dato de asistencia a entrevistas (55%). No tiene el dato de cuántos aceptan vs. cuántos se presentan, ni cuántos llegan a los 30, 60 y 90 días. Sin esos datos, no se puede saber si las acciones anteriores están funcionando.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p3"></div><span>Registrar en una hoja simple: fecha de contacto → fecha de entrevista → ¿asistió? → ¿recibió oferta? → ¿firmó? → ¿llegó el día 1? → fecha de baja si aplica.</span></div>
+            <div class="action-step"><div class="step-dot p3"></div><span>Revisar este embudo cada 2 semanas. Con 8 semanas de datos, ya se puede identificar en qué etapa específica está la mayor pérdida.</span></div>
+            <div class="action-step"><div class="step-dot p3"></div><span>Meta: tener el dato de conversión oferta→firma en los próximos 30 días.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag largo">Habilita toma de decisiones con datos</span>
+            <span class="action-tag info">Fuente: brecha identificada en análisis</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-item">
+        <div class="action-num p3">7</div>
+        <div class="action-content">
+          <div class="action-title">Reducir el tiempo entre contacto y entrevista — aunque la asistencia ya sea aceptable</div>
+          <div class="action-desc">Con 55% de asistencia, el problema no es crítico. Sin embargo, el 42% hipotético de "salió otra oferta" confirma que los candidatos operativos deciden rápido. Citar más rápido no duplica asistencia, pero probablemente la mejora en algunos puntos porcentuales con costo cero.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p3"></div><span>Meta interna: cita agendada el mismo día del primer contacto o máximo al siguiente. Medir el tiempo promedio actual antes de implementar.</span></div>
+            <div class="action-step"><div class="step-dot p3"></div><span>Enviar recordatorio por WhatsApp 24h antes de la entrevista con dirección, nombre del entrevistador y confirmación de asistencia.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag largo">Mejora marginal en asistencia</span>
+            <span class="action-tag info">Fuente: Q2 hipotético — señal, no certeza</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-item">
+        <div class="action-num p3">8</div>
+        <div class="action-content">
+          <div class="action-title">Hacer una encuesta de salida estructurada a quien abandona en el primer mes</div>
+          <div class="action-desc">La encuesta actual muestra percepciones de quienes se quedaron. Para entender a quienes se van, hay que preguntarles directamente. Una encuesta de salida de 3 preguntas respondida por WhatsApp generaría en 60 días los datos de comportamiento real que hoy no existen.</div>
+          <div class="action-steps">
+            <div class="action-step"><div class="step-dot p3"></div><span>3 preguntas máximo: "¿Cuál fue la razón principal por la que dejaste el trabajo?" / "¿Qué podría haber cambiado tu decisión?" / "¿Recomendarías AMG como lugar de trabajo a alguien?"</span></div>
+            <div class="action-step"><div class="step-dot p3"></div><span>Enviar dentro de las 48h de la baja, cuando la persona todavía recuerda y no hay rencor acumulado.</span></div>
+            <div class="action-step"><div class="step-dot p3"></div><span>Con 20-30 respuestas, revisar si los temas de Q4 (ambiente, jefes, pagos) se confirman o aparecen otros patrones.</span></div>
+          </div>
+          <div class="action-meta">
+            <span class="action-tag largo">Cierra el ciclo de datos</span>
+            <span class="action-tag info">Complementa esta encuesta con datos reales de salida</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TABLA RESUMEN -->
+  <div class="section-header">
+    <div class="section-icon blue">📋</div>
+    <div><h2>Tabla de Intervenciones — Fuente y Prioridad</h2><p>Con fuente de dato indicada para cada acción</p></div>
+  </div>
+  <div class="card">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Problema</th>
+            <th>Causa (encuesta/dato)</th>
+            <th>Fuente</th>
+            <th>% afectados</th>
+            <th>Acción clave</th>
+            <th>Urgencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Abandono &lt;30 días</strong></td>
+            <td>Mal ambiente / mal trato</td>
+            <td><span class="tag encuesta">Q4 Encuesta</span></td>
+            <td style="color:var(--primary); font-weight:700;">43% + 19%</td>
+            <td>Onboarding + capacitar gerentes</td>
+            <td><span class="tag rojo">🔴 Inmediata</span></td>
+          </tr>
+          <tr>
+            <td><strong>Abandono &lt;30 días</strong></td>
+            <td>Pagos impuntuales / incompletos</td>
+            <td><span class="tag encuesta">Q4 Encuesta</span></td>
+            <td style="color:var(--warning); font-weight:700;">24%</td>
+            <td>Transparencia de pagos garantizada</td>
+            <td><span class="tag rojo">🔴 Inmediata</span></td>
+          </tr>
+          <tr>
+            <td><strong>Baja motivación</strong></td>
+            <td>Brecha expectativa vs. realidad</td>
+            <td><span class="tag encuesta">Q1 + Q4</span></td>
+            <td style="color:#e67e22; font-weight:700;">69% esperaba crecimiento</td>
+            <td>Mostrar plan de carrera real desde entrevista</td>
+            <td><span class="tag amarillo">🟡 2–3 semanas</span></td>
+          </tr>
+          <tr>
+            <td><strong>Baja motivación</strong></td>
+            <td>Condiciones no comunicadas</td>
+            <td><span class="tag encuesta">Q3 + Q4</span></td>
+            <td style="color:var(--info); font-weight:700;">14% hipotético</td>
+            <td>Oferta de trabajo 100% transparente</td>
+            <td><span class="tag amarillo">🟡 2–3 semanas</span></td>
+          </tr>
+          <tr>
+            <td><strong>Datos faltantes</strong></td>
+            <td>No se mide conversión oferta→firma</td>
+            <td><span class="tag ops">Dato operativo</span></td>
+            <td style="color:#7f8c8d; font-weight:700;">Desconocido</td>
+            <td>Instrumentar embudo completo</td>
+            <td><span class="tag amarillo">🟡 Esta semana</span></td>
+          </tr>
+          <tr>
+            <td><strong>Asistencia entrevistas</strong></td>
+            <td>Competencia / distancia</td>
+            <td><span class="tag encuesta">Q2 hipotético</span></td>
+            <td style="color:var(--success); font-weight:700;">55% ya asiste — no crítico</td>
+            <td>Recordatorio WhatsApp + cita rápida</td>
+            <td><span class="tag verde">🟢 Bajo-medio</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Reporte RH AMG/Chubbies · Versión 2 · Abril 2026 · Análisis: 81 respuestas de encuesta + datos operativos RH · Uso interno
+</div>
+
+<script>
+const Q1 = document.getElementById('chartQ1').getContext('2d');
+new Chart(Q1, {
+  type: 'doughnut',
+  data: {
+    labels: ['Buen salario','Crecer/Aprender','Buen ambiente','Horarios flex.','Cerca de casa','Respeto proceso','Estabilidad','No corren fácil'],
+    datasets: [{ data: [77.8,69.1,60.5,50.6,32.1,27.2,9.9,9.9],
+      backgroundColor:['#E8401C','#E8551C','#E8731C','#F39C12','#F5B041','#2980B9','#27AE60','#8E44AD'],
+      borderWidth:2, borderColor:'#fff' }]
+  },
+  options: { responsive:true, maintainAspectRatio:false, plugins: {
+    legend:{ position:'right', labels:{ font:{size:10}, padding:10, boxWidth:12 }},
+    tooltip:{ callbacks:{ label: c => ' '+c.label+': '+c.raw+'%' }}
+  }, cutout:'55%' }
+});
+
+const Q2 = document.getElementById('chartQ2').getContext('2d');
+new Chart(Q2, {
+  type: 'bar',
+  data: {
+    labels:['Salió otra oferta','Lejos/transporte','Olvidó o perdió datos','Proceso tardado','Cambió de opinión','Pena de cancelar','Nunca tuvo ganas'],
+    datasets:[{ label:'% (respuesta hipotética)', data:[42,25.9,11.1,8.6,6.2,4.9,1.2],
+      backgroundColor:['#E8401C','#F39C12','#2980B9','#e67e22','#8E44AD','#16a085','#7f8c8d'],
+      borderRadius:6, borderSkipped:false }]
+  },
+  options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c=>` ${c.raw}% (hipotético)` }}},
+    scales:{ x:{ grid:{color:'#F0F2F5'}, ticks:{font:{size:10}, callback:v=>v+'%'}, max:50 },
+             y:{ grid:{display:false}, ticks:{font:{size:10}} } }
+  }
+});
+
+const Q3 = document.getElementById('chartQ3').getContext('2d');
+new Chart(Q3, {
+  type: 'bar',
+  data: {
+    labels:['Algo personal/familiar*','Mejor oferta recibida','Condiciones ≠ esperadas','Era solo opción backup','Dudas, aceptó por presión','Miedo/nervios','Mal trato en entrevista'],
+    datasets:[{ label:'% (respuesta hipotética)', data:[40.7,25.9,13.6,9.9,4.9,3.7,1.2],
+      backgroundColor:['#95a5a6','#E8401C','#F39C12','#e67e22','#8E44AD','#2980B9','#c0392b'],
+      borderRadius:6, borderSkipped:false }]
+  },
+  options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label: c=>`${c.raw}% (hipotético — ver nota)` }},
+      subtitle:{ display:true, text:'* Respuesta más cómoda/socialmente segura — interpretar con cautela', font:{size:9,style:'italic'}, color:'#999', padding:{top:6} }
+    },
+    scales:{ x:{ grid:{color:'#F0F2F5'}, ticks:{font:{size:10}, callback:v=>v+'%'}, max:50 },
+             y:{ grid:{display:false}, ticks:{font:{size:10}} } }
+  }
+});
+
+const Q4 = document.getElementById('chartQ4').getContext('2d');
+new Chart(Q4, {
+  type: 'bar',
+  data: {
+    labels:['Mal ambiente','Salario/pagos','Mal trato jefes','Horarios','Sin capacitación','Sin crecimiento','Falta comunicación','Sin reconocimiento','Incumplimiento','Favoritismo'],
+    datasets:[{ label:'% de menciones (se traslapan)', data:[43.2,23.5,18.5,12.3,9.9,9.9,8.6,7.4,6.2,3.7],
+      backgroundColor:['#E8401C','#F39C12','#e74c3c','#e67e22','#2980B9','#27AE60','#16a085','#8E44AD','#2c3e50','#7f8c8d'],
+      borderRadius:6, borderSkipped:false }]
+  },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label: c=>`${c.raw}% de respuestas (puede coincidir con otros temas)` }}
+    },
+    scales:{ x:{ grid:{display:false}, ticks:{font:{size:9}, maxRotation:35} },
+             y:{ grid:{color:'#F0F2F5'}, ticks:{font:{size:10}, callback:v=>v+'%'} } }
+  }
+});
+</script>
+</body>
+</html>
